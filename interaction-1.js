@@ -12,7 +12,7 @@ let dspNodeParams = null;
 let jsonParams = null;
 
 // Change here to ("tuono") depending on your wasm file name
-const dspName = "tuono";
+const dspName = "rain";
 const instance = new FaustWasm2ScriptProcessor(dspName);
 
 // output to window or npm package module
@@ -25,7 +25,7 @@ if (typeof module === "undefined") {
 }
 
 // The name should be the same as the WASM file, so change tuono with brass if you use brass.wasm
-tuono.createDSP(audioContext, 1024)
+rain.createDSP(audioContext, 1024)
     .then(node => {
         dspNode = node;
         dspNode.connect(audioContext.destination);
@@ -50,16 +50,23 @@ tuono.createDSP(audioContext, 1024)
 //------------------------------------------------------------------------------------------
 //
 //==========================================================================================
+let shakeLevel = 0;
 
+// Mapping 1: phone shaken -> rain (like a rain stick: harder shaking, denser and louder rain)
 function accelerationChange(accx, accy, accz) {
-    // playAudio()
+        if (!dspNode) return;
+        const mag = Math.sqrt(accx*accx + accy*accy + accz*accz);
+        shakeLevel = 0.9 * shakeLevel + 0.1 * mag;
+        dspNode.setParamValue("/rain/density", map(shakeLevel, 0, 15, 0, 1000, true));
+        dspNode.setParamValue("/rain/volume",  map(shakeLevel, 0, 15, 0, 0.8, true));
 }
+
 
 function rotationChange(rotx, roty, rotz) {
 }
 
 function mousePressed() {
-    playAudio()
+    shakeLevel = 15;
     // Use this for debugging from the desktop!
 }
 
@@ -74,7 +81,6 @@ function deviceTurned() {
 function deviceShaken() {
     shaketimer = millis();
     statusLabels[0].style("color", "pink");
-    playAudio();
 }
 
 function getMinMaxParam(address) {
@@ -96,18 +102,7 @@ function getMinMaxParam(address) {
 //==========================================================================================
 
 function playAudio() {
-    if (!dspNode) {
-        return;
-    }
-    if (audioContext.state === 'suspended') {
-        return;
-    }
-    // Edit here the addresses ("/thunder/rumble") depending on your WASM controls (you can see 
-    // them printed on the console of your browser when you load the page)
-    // For example if you change to a bell sound, here you could use "/churchBell/gate" instead of
-    // "/thunder/rumble".
-    dspNode.setParamValue("/thunder/rumble", 1)
-    setTimeout(() => { dspNode.setParamValue("/thunder/rumble", 0) }, 100);
+    // Not used in mapping 1: the rain is controlled continuously in accelerationChange()
 }
 
 //==========================================================================================

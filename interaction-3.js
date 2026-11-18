@@ -12,7 +12,7 @@ let dspNodeParams = null;
 let jsonParams = null;
 
 // Change here to ("tuono") depending on your wasm file name
-const dspName = "brass";
+const dspName = "wind";
 const instance = new FaustWasm2ScriptProcessor(dspName);
 
 // output to window or npm package module
@@ -25,7 +25,7 @@ if (typeof module === "undefined") {
 }
 
 // The name should be the same as the WASM file, so change tuono with brass if you use brass.wasm
-brass.createDSP(audioContext, 1024)
+wind.createDSP(audioContext, 1024)
     .then(node => {
         dspNode = node;
         dspNode.connect(audioContext.destination);
@@ -52,15 +52,28 @@ brass.createDSP(audioContext, 1024)
 //==========================================================================================
 
 function accelerationChange(accx, accy, accz) {
-    // playAudio()
 }
 
+// Mapping 3: phone spun flat on a table -> wind (like a fan: faster spin, stronger wind)
+let lastRotZ = null;   // Rotation Z in the previous frame
+let spinLevel = 0;     // smoothed spinning speed
+
 function rotationChange(rotx, roty, rotz) {
+    if (!dspNode) return;
+    if (lastRotZ === null) { lastRotZ = rotz; return; }
+    let delta = rotz - lastRotZ;   // how much the phone turned since the last frame (radians)
+    lastRotZ = rotz;
+    // Rotation Z wraps around (360 deg -> 0 deg): correct the jump so it is not read as a huge spin
+    if (delta > PI) delta -= TWO_PI;
+    if (delta < -PI) delta += TWO_PI;
+    spinLevel = 0.9 * spinLevel + 0.1 * Math.abs(delta);   // smoothing: the wind rises and dies down gradually
+    dspNode.setParamValue("/wind/wind/force", map(spinLevel, 0, 0.15, 0, 1, true));
+    dspNode.setParamValue("/wind/volume", 1);
 }
 
 function mousePressed() {
-    playAudio(mouseX/windowWidth)
-    // Use this for debugging from the desktop!
+    // Use this for debugging from the desktop: pretend the phone was spun fast, then the wind dies down
+    spinLevel = 0.15;
 }
 
 function deviceMoved() {
@@ -74,7 +87,6 @@ function deviceTurned() {
 function deviceShaken() {
     shaketimer = millis();
     statusLabels[0].style("color", "pink");
-    playAudio();
 }
 
 function getMinMaxParam(address) {
@@ -95,15 +107,8 @@ function getMinMaxParam(address) {
 //
 //==========================================================================================
 
-function playAudio(pressure) {
-    if (!dspNode) {
-        return;
-    }
-    if (audioContext.state === 'suspended') {
-        return;
-    }
-    console.log(pressure)
-    dspNode.setParamValue("/brass/blower/pressure", pressure)
+function playAudio() {
+    // Not used in mapping 3: the wind is controlled continuously in rotationChange()
 }
 
 //==========================================================================================
