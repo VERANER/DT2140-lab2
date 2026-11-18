@@ -60,20 +60,28 @@ let spinLevel = 0;     // smoothed spinning speed
 
 function rotationChange(rotx, roty, rotz) {
     if (!dspNode) return;
-    if (lastRotZ === null) { lastRotZ = rotz; return; }
-    let delta = rotz - lastRotZ;   // how much the phone turned since the last frame (radians)
-    lastRotZ = rotz;
-    // Rotation Z wraps around (360 deg -> 0 deg): correct the jump so it is not read as a huge spin
-    if (delta > PI) delta -= TWO_PI;
-    if (delta < -PI) delta += TWO_PI;
-    spinLevel = 0.9 * spinLevel + 0.1 * Math.abs(delta);   // smoothing: the wind rises and dies down gradually
-    dspNode.setParamValue("/wind/wind/force", map(spinLevel, 0, 0.15, 0, 1, true));
+    let delta = 0;   // how much the phone turned since the last frame (radians)
+    if (rotz !== null && rotz !== undefined) {   // no orientation data on a laptop or without permission
+        if (lastRotZ !== null) {
+            delta = rotz - lastRotZ;
+            // Rotation Z wraps around (360 deg -> 0 deg): correct the jump so it is not read as a huge spin
+            if (delta > PI) delta -= TWO_PI;
+            if (delta < -PI) delta += TWO_PI;
+        }
+        lastRotZ = rotz;
+    }
+    spinLevel = 0.95 * spinLevel + 0.05 * Math.abs(delta);   // smoothing: the wind rises and dies down gradually
+    // The wind model is only audible between ~0.5 and ~0.9 (at 1 its filter becomes unstable and very loud),
+    // so the spinning speed is mapped into that range, and the wind is silent when the phone is still
+    const amount = map(spinLevel, 0, 0.06, 0, 1, true);
+    const force = amount < 0.05 ? 0 : 0.5 + 0.4 * amount;
+    dspNode.setParamValue("/wind/wind/force", force);
     dspNode.setParamValue("/wind/volume", 1);
 }
 
 function mousePressed() {
     // Use this for debugging from the desktop: pretend the phone was spun fast, then the wind dies down
-    spinLevel = 0.15;
+    spinLevel = 0.06;
 }
 
 function deviceMoved() {

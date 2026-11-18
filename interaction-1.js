@@ -56,9 +56,11 @@ let shakeLevel = 0;
 function accelerationChange(accx, accy, accz) {
         if (!dspNode) return;
         const mag = Math.sqrt(accx*accx + accy*accy + accz*accz);
-        shakeLevel = 0.9 * shakeLevel + 0.1 * mag;
-        dspNode.setParamValue("/rain/density", map(shakeLevel, 0, 15, 0, 1000, true));
-        dspNode.setParamValue("/rain/volume",  map(shakeLevel, 0, 15, 0, 0.8, true));
+        shakeLevel = 0.95 * shakeLevel + 0.05 * mag;   // smoothing: the rain builds up and fades out gradually
+        // density = chance per sample that a "drop" is heard: small values (up to ~100 of 1000)
+        // sound like rain drops, large values turn into plain white noise
+        dspNode.setParamValue("/rain/density", map(shakeLevel, 0, 15, 0, 100, true));
+        dspNode.setParamValue("/rain/volume",  map(shakeLevel, 0, 15, 0, 1, true));
 }
 
 
